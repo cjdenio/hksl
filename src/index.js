@@ -21,6 +21,10 @@ const itemEmojis = {
   cyl_compressence: "crystcyl",
 
   nest_egg: "nest_egg",
+
+  powder_t1: "warp_powder",
+
+  land_deed: "land_deed",
 };
 
 const plantImages = {
@@ -66,19 +70,19 @@ const app = new App({
 });
 
 setInterval(() => {
-  try {
-    const activeUsers = Object.entries(userActivity)
-      .filter(([, lastActive]) => lastActive < Date.now() + 1000 * 60 * 5)
-      .map(([user]) => user);
+  const activeUsers = Object.entries(userActivity)
+    .filter(([, lastActive]) => lastActive < Date.now() + 1000 * 60 * 5)
+    .map(([user]) => user);
 
-    activeUsers.forEach(async (user) => {
-      if (await prisma.user.findUnique({ where: { slackId: user } })) {
+  activeUsers.forEach(async (user) => {
+    if (await prisma.user.findUnique({ where: { slackId: user } })) {
+      try {
         await updateAppHome(user);
+      } catch (e) {
+        console.log("e");
       }
-    });
-  } catch (e) {
-    console.error(e);
-  }
+    }
+  });
 }, 5000);
 
 async function updateAppHome(userId) {
@@ -259,7 +263,7 @@ async function updateAppHome(userId) {
             accessory: manifest.items[item].usable
               ? {
                   type: "overflow",
-                  action_id: "item_options",
+                  action_id: `item_options:${item}`,
                   options: [
                     {
                       text: {
@@ -267,7 +271,7 @@ async function updateAppHome(userId) {
                         emoji: true,
                         text: item.includes("egg")
                           ? ":nest_egg: Hatch"
-                          : ":sparkles: Use",
+                          : `:${itemEmojis[item]}: Use item`,
                       },
                       value: "use",
                     },
@@ -426,11 +430,33 @@ app.action("send", async ({ ack, action, body }) => {
   await updateAppHome(body.user.id);
 });
 
-app.action("item_options", async ({ ack, action, body }) => {
+app.action(/^item_options:.+/, async ({ ack, action, body }) => {
   userActivity[body.user.id] = Date.now();
   await ack();
 
-  console.log(`item action: ${action.selected_option.value}`);
+  const user = await prisma.user.findUniqueOrThrow({
+    where: { slackId: body.user.id },
+  });
+
+  const item = action.action_id.split(":")[1];
+
+  const option = action.selected_option.value;
+
+  if (option == "use") {
+    const { data } = await axios.post(
+      "https://misguided.enterprises/hkgi/useitem",
+      {
+        item,
+      },
+      {
+        auth: { username: user.username, password: user.password },
+      }
+    );
+
+    console.log(data);
+  } else {
+    console.log(`unknown option: ${option}`);
+  }
 
   await updateAppHome(body.user.id);
 });
