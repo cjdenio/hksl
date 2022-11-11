@@ -21,6 +21,7 @@ const itemEmojis = {
   cyl_compressence: "crystcyl",
 
   nest_egg: "nest_egg",
+  bbc_egg: "bread_egg",
 
   powder_t1: "warp_powder",
 
@@ -192,8 +193,9 @@ async function updateAppHome(userId) {
                           .join(", ") +
                         " :arrow_right: *" +
                         (recipe.make_item
-                          ? manifest.items[recipe.make_item].name
-                          : `:seedling: ` +
+                          ? `:${itemEmojis[recipe.make_item]}: ` +
+                            manifest.items[recipe.make_item].name
+                          : ":seedling: " +
                             manifest.plant_titles[recipe.change_plant_to]) +
                         "*",
                     },
@@ -302,7 +304,7 @@ async function updateAppHome(userId) {
           elements: [
             {
               type: "mrkdwn",
-              text: "hksl v0.1",
+              text: `hksl v0.1 · Signed in as \`${user.username}\``,
             },
           ],
         },
@@ -542,6 +544,14 @@ app.view("send", async ({ view, ack, body }) => {
     });
 
     await updateAppHome(body.user.id);
+
+    const receivingUser = await prisma.user.findFirst({
+      where: { username: view.state.values.username.username.value },
+    });
+
+    if (receivingUser) {
+      await updateAppHome(receivingUser.slackId);
+    }
   }
 });
 
