@@ -11,7 +11,8 @@ datasource db {
 }
 
 model User {
-  slackId  String @id
-  username String
-  password String
+  slackId    String  @id
+  username   String
+  password   String
+  lastSentTo String?
 }

@@ -426,6 +426,10 @@ app.action("send", async ({ ack, action, body, client }) => {
   userActivity[body.user.id] = Date.now();
   await ack();
 
+  const user = await prisma.user.findUniqueOrThrow({
+    where: { slackId: body.user.id },
+  });
+
   await client.views.open({
     trigger_id: body.trigger_id,
     view: {
@@ -474,6 +478,7 @@ app.action("send", async ({ ack, action, body, client }) => {
               type: "plain_text",
               text: "e.g. cjdenio",
             },
+            initial_value: user.lastSentTo,
           },
         },
       ],
@@ -530,6 +535,11 @@ app.view("send", async ({ view, ack, body }) => {
     }
   } else {
     await ack();
+
+    await prisma.user.update({
+      where: { slackId: user.slackId },
+      data: { lastSentTo: view.state.values.username.username.value },
+    });
 
     await updateAppHome(body.user.id);
   }
@@ -606,6 +616,7 @@ app.action(/^item_options:.+/, async ({ ack, action, body, client }) => {
                 type: "plain_text",
                 text: "e.g. cjdenio",
               },
+              initial_value: user.lastSentTo ?? undefined,
             },
           },
         ],
