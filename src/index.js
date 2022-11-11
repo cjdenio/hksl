@@ -22,6 +22,7 @@ const itemEmojis = {
 
   nest_egg: "nest_egg",
   bbc_egg: "bread_egg",
+  hvv_egg: "hacker_egg",
 
   powder_t1: "warp_powder",
 
@@ -149,7 +150,11 @@ async function updateAppHome(userId) {
                 type: "mrkdwn",
                 text: `*${manifest.plant_titles[plant.kind]}* \`${
                   plant.kind
-                }\`${plant.kind == "dirt" ? "\n\n_So much opportunity!_" : ""}`,
+                }\`${
+                  plant.kind == "dirt" ? "\n\n_So much opportunity!_" : ""
+                } ${(plant.statuses || [])
+                  .map((status) => `:${itemEmojis[status.kind]}:`)
+                  .join(" ")}`,
               },
               fields: plant.tt_yield
                 ? [
@@ -393,12 +398,18 @@ app.view("auth", async ({ ack, view, body }) => {
 
   if (!data.ok) {
     if (data.msg == "user doesn't exist") {
-      await ack({
-        response_action: "errors",
-        errors: {
-          username: "that user doesn't exist",
-        },
+      // create user
+      await axios.post("https://misguided.enterprises/hkgi/signup", {
+        user: username,
+        pass: password,
       });
+
+      await ack();
+      await prisma.user.create({
+        data: { slackId: body.user.id, username, password },
+      });
+
+      await updateAppHome(body.user.id);
     } else if (data.msg == "wrong password") {
       await ack({
         response_action: "errors",
