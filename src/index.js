@@ -478,7 +478,7 @@ app.action("send", async ({ ack, action, body, client }) => {
               type: "plain_text",
               text: "e.g. cjdenio",
             },
-            initial_value: user.lastSentTo,
+            initial_value: user.lastSentTo ?? undefined,
           },
         },
       ],
