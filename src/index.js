@@ -79,6 +79,7 @@ setInterval(() => {
       try {
         await updateAppHome(user);
       } catch (e) {
+        console.log(e);
         console.log("e");
       }
     }
@@ -421,16 +422,120 @@ app.view("auth", async ({ ack, view, body }) => {
   }
 });
 
-app.action("send", async ({ ack, action, body }) => {
+app.action("send", async ({ ack, action, body, client }) => {
   userActivity[body.user.id] = Date.now();
   await ack();
 
-  console.log(`sending ${action.value}`);
-
-  await updateAppHome(body.user.id);
+  await client.views.open({
+    trigger_id: body.trigger_id,
+    view: {
+      type: "modal",
+      callback_id: "send",
+      private_metadata: action.value,
+      title: {
+        type: "plain_text",
+        text: "Send item",
+      },
+      blocks: [
+        {
+          type: "section",
+          text: {
+            type: "mrkdwn",
+            text: `:${itemEmojis[action.value]}: Sending: *${
+              manifest.items[action.value].name
+            }* \`${action.value}\``,
+          },
+        },
+        {
+          type: "input",
+          label: {
+            type: "plain_text",
+            text: "Amount to send",
+          },
+          block_id: "amount",
+          element: {
+            type: "number_input",
+            is_decimal_allowed: false,
+            initial_value: "1",
+            action_id: "amount",
+          },
+        },
+        {
+          type: "input",
+          label: {
+            type: "plain_text",
+            text: "Username to send to",
+          },
+          block_id: "username",
+          element: {
+            type: "plain_text_input",
+            action_id: "username",
+            placeholder: {
+              type: "plain_text",
+              text: "e.g. cjdenio",
+            },
+          },
+        },
+      ],
+      submit: {
+        type: "plain_text",
+        text: "Send",
+      },
+    },
+  });
 });
 
-app.action(/^item_options:.+/, async ({ ack, action, body }) => {
+app.view("send", async ({ view, ack, body }) => {
+  const user = await prisma.user.findUniqueOrThrow({
+    where: { slackId: body.user.id },
+  });
+
+  const { data } = await axios.post(
+    "https://misguided.enterprises/hkgi/gib",
+    {
+      person: view.state.values.username.username.value,
+      item: view.private_metadata,
+      amount: view.state.values.amount.amount.value,
+    },
+    {
+      auth: {
+        username: user.username,
+        password: user.password,
+      },
+    }
+  );
+
+  if (!data.ok) {
+    if (data.msg == "who dat?") {
+      await ack({
+        response_action: "errors",
+        errors: {
+          username: "that user doesn't exist",
+        },
+      });
+    } else if (data.msg == "you can't afford that!") {
+      await ack({
+        response_action: "errors",
+        errors: {
+          amount: "you don't have that much!",
+        },
+      });
+    } else {
+      await ack({
+        response_action: "errors",
+        errors: {
+          username: "something went wrong",
+        },
+      });
+    }
+  } else {
+    await ack();
+
+    await updateAppHome(body.user.id);
+  }
+});
+
+app.action(/^item_options:.+/, async ({ ack, action, body, client }) => {
   userActivity[body.user.id] = Date.now();
   await ack();
 
@@ -454,6 +559,62 @@ app.action(/^item_options:.+/, async ({ ack, action, body }) => {
     );
 
     console.log(data);
+  } else if (option == "send") {
+    await client.views.open({
+      trigger_id: body.trigger_id,
+      view: {
+        type: "modal",
+        callback_id: "send",
+        private_metadata: item,
+        title: {
+          type: "plain_text",
+          text: "Send item",
+        },
+        blocks: [
+          {
+            type: "section",
+            text: {
+              type: "mrkdwn",
+              text: `:${itemEmojis[item]}: Sending: *${manifest.items[item].name}* \`${item}\``,
+            },
+          },
+          {
+            type: "input",
+            label: {
+              type: "plain_text",
+              text: "Amount to send",
+            },
+            block_id: "amount",
+            element: {
+              type: "number_input",
+              is_decimal_allowed: false,
+              initial_value: "1",
+              action_id: "amount",
+            },
+          },
+          {
+            type: "input",
+            label: {
+              type: "plain_text",
+              text: "Username to send to",
+            },
+            block_id: "username",
+            element: {
+              type: "plain_text_input",
+              action_id: "username",
+              placeholder: {
+                type: "plain_text",
+                text: "e.g. cjdenio",
+              },
+            },
+          },
+        ],
+        submit: {
+          type: "plain_text",
+          text: "Send",
+        },
+      },
+    });
   } else {
     console.log(`unknown option: ${option}`);
   }
