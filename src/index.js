@@ -23,6 +23,7 @@ const itemEmojis = {
   nest_egg: "nest_egg",
   bbc_egg: "bread_egg",
   hvv_egg: "hacker_egg",
+  cyl_egg: "cyl_egg",
 
   powder_t1: "warp_powder",
 
@@ -513,7 +514,7 @@ app.view("send", async ({ view, ack, body }) => {
     {
       person: view.state.values.username.username.value,
       item: view.private_metadata,
-      amount: view.state.values.amount.amount.value,
+      amount: parseInt(view.state.values.amount.amount.value),
     },
     {
       auth: {
