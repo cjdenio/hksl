@@ -215,11 +215,13 @@ async function updateAppHome(userId) {
                       text: {
                         type: "plain_text",
                         emoji: true,
-                        text: recipe.change_plant_to
-                          ? ":seedling: Plant"
-                          : canCraftItem
-                          ? ":hammer_and_pick: Craft"
-                          : "Can't craft this",
+                        text:
+                          recipe.change_plant_to &&
+                          recipe.change_plant_to != "dirt"
+                            ? ":seedling: Plant"
+                            : canCraftItem
+                            ? ":hammer_and_pick: Craft"
+                            : "Can't craft this",
                       },
                       action_id: "craft",
                       value: JSON.stringify({ plotIndex, recipeIndex }),
