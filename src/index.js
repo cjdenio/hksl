@@ -11,14 +11,17 @@ const itemEmojis = {
   bbc_seed: "bractus_seed",
   bbc_essence: "bread_essence",
   bbc_compressence: "bressence",
+  bbc_item: "rolling_pin",
 
   hvv_seed: "hacker_vibes_vine_seed",
   hvv_essence: "hacker_spirit",
   hvv_compressence: "hacksprit",
+  hvv_item: "vine_keyboard",
 
   cyl_seed: "coffea_cyl_seed",
   cyl_essence: "cyl_crystal",
   cyl_compressence: "crystcyl",
+  cyl_item: "cyl_wand",
 
   nest_egg: "nest_egg",
   bbc_egg: "bread_egg",
@@ -26,6 +29,7 @@ const itemEmojis = {
   cyl_egg: "cyl_egg",
 
   powder_t1: "warp_powder",
+  powder_t2: "rift_powder",
   powder_t3: "wormhole_powder",
 
   land_deed: "land_deed",
