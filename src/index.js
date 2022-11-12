@@ -226,7 +226,8 @@ async function updateAppHome(userId) {
                       action_id: "craft",
                       value: JSON.stringify({ plotIndex, recipeIndex }),
                       style:
-                        recipe.change_plant_to ||
+                        (recipe.change_plant_to &&
+                          recipe.change_plant_to != "dirt") ||
                         (!stead.plants.some((plant) => plant.kind == "dirt") &&
                           canCraftItem)
                           ? "primary"
