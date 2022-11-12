@@ -26,6 +26,7 @@ const itemEmojis = {
   cyl_egg: "cyl_egg",
 
   powder_t1: "warp_powder",
+  powder_t3: "wormhole_powder",
 
   land_deed: "land_deed",
 };
@@ -181,7 +182,11 @@ async function updateAppHome(userId) {
                 const canCraftItem = canCraft(stead.inv, recipe);
 
                 // Hide plant recipes if they're uncraftable
-                if (!canCraftItem && recipe.change_plant_to) {
+                if (
+                  !canCraftItem &&
+                  recipe.change_plant_to &&
+                  recipe.change_plant_to != "dirt"
+                ) {
                   return [];
                 }
 
@@ -689,6 +694,6 @@ app.action("craft", async ({ ack, action, body }) => {
   );
   manifest = _manifest;
 
-  await app.start(3000);
+  await app.start(3015);
   console.log("hksl started");
 })();
