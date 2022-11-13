@@ -458,61 +458,7 @@ app.action("send", async ({ ack, action, body, client }) => {
 
   await client.views.open({
     trigger_id: body.trigger_id,
-    view: {
-      type: "modal",
-      callback_id: "send",
-      private_metadata: action.value,
-      title: {
-        type: "plain_text",
-        text: "Send item",
-      },
-      blocks: [
-        {
-          type: "section",
-          text: {
-            type: "mrkdwn",
-            text: `:${itemEmojis[action.value]}: Sending: *${
-              manifest.items[action.value].name
-            }* \`${action.value}\``,
-          },
-        },
-        {
-          type: "input",
-          label: {
-            type: "plain_text",
-            text: "Amount to send",
-          },
-          block_id: "amount",
-          element: {
-            type: "number_input",
-            is_decimal_allowed: false,
-            initial_value: "1",
-            action_id: "amount",
-          },
-        },
-        {
-          type: "input",
-          label: {
-            type: "plain_text",
-            text: "Username to send to",
-          },
-          block_id: "username",
-          element: {
-            type: "plain_text_input",
-            action_id: "username",
-            placeholder: {
-              type: "plain_text",
-              text: "e.g. cjdenio",
-            },
-            initial_value: user.lastSentTo ?? undefined,
-          },
-        },
-      ],
-      submit: {
-        type: "plain_text",
-        text: "Send",
-      },
-    },
+    view: sendModal(action.value, user),
   });
 });
 
@@ -579,6 +525,62 @@ app.view("send", async ({ view, ack, body }) => {
   }
 });
 
+function sendModal(item, user) {
+  return {
+    type: "modal",
+    callback_id: "send",
+    private_metadata: item,
+    title: {
+      type: "plain_text",
+      text: "Send item",
+    },
+    blocks: [
+      {
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text: `:${itemEmojis[item]}: Sending: *${manifest.items[item].name}* \`${item}\``,
+        },
+      },
+      {
+        type: "input",
+        label: {
+          type: "plain_text",
+          text: "Amount to send",
+        },
+        block_id: "amount",
+        element: {
+          type: "number_input",
+          is_decimal_allowed: false,
+          initial_value: "1",
+          action_id: "amount",
+        },
+      },
+      {
+        type: "input",
+        label: {
+          type: "plain_text",
+          text: "Username to send to",
+        },
+        block_id: "username",
+        element: {
+          type: "plain_text_input",
+          action_id: "username",
+          placeholder: {
+            type: "plain_text",
+            text: "e.g. cjdenio",
+          },
+          initial_value: user.lastSentTo ?? undefined,
+        },
+      },
+    ],
+    submit: {
+      type: "plain_text",
+      text: "Send",
+    },
+  };
+}
+
 app.action(/^item_options:.+/, async ({ ack, action, body, client }) => {
   userActivity[body.user.id] = Date.now();
   await ack();
@@ -606,59 +608,7 @@ app.action(/^item_options:.+/, async ({ ack, action, body, client }) => {
   } else if (option == "send") {
     await client.views.open({
       trigger_id: body.trigger_id,
-      view: {
-        type: "modal",
-        callback_id: "send",
-        private_metadata: item,
-        title: {
-          type: "plain_text",
-          text: "Send item",
-        },
-        blocks: [
-          {
-            type: "section",
-            text: {
-              type: "mrkdwn",
-              text: `:${itemEmojis[item]}: Sending: *${manifest.items[item].name}* \`${item}\``,
-            },
-          },
-          {
-            type: "input",
-            label: {
-              type: "plain_text",
-              text: "Amount to send",
-            },
-            block_id: "amount",
-            element: {
-              type: "number_input",
-              is_decimal_allowed: false,
-              initial_value: "1",
-              action_id: "amount",
-            },
-          },
-          {
-            type: "input",
-            label: {
-              type: "plain_text",
-              text: "Username to send to",
-            },
-            block_id: "username",
-            element: {
-              type: "plain_text_input",
-              action_id: "username",
-              placeholder: {
-                type: "plain_text",
-                text: "e.g. cjdenio",
-              },
-              initial_value: user.lastSentTo ?? undefined,
-            },
-          },
-        ],
-        submit: {
-          type: "plain_text",
-          text: "Send",
-        },
-      },
+      view: sendModal(item, user),
     });
   } else {
     console.log(`unknown option: ${option}`);
