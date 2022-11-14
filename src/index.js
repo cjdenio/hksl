@@ -33,6 +33,22 @@ const itemEmojis = {
   powder_t3: "wormhole_powder",
 
   land_deed: "land_deed",
+
+  cyl_bag_t1: "crystalline_buzzwing_bagling",
+  hvv_bag_t1: "spirited_buzzwing_bagling",
+  bbc_bag_t1: "doughy_buzzwing_bagling",
+
+  cyl_bag_t2: "crystalline_buzzwing_boxlet",
+  hvv_bag_t2: "spirited_buzzwing_boxlet",
+  bbc_bag_t2: "doughy_buzzwing_boxlet",
+
+  cyl_bag_t3: "crystalline_buzzwing_megabox",
+  hvv_bag_t3: "spirited_buzzwing_megabox",
+  bbc_bag_t3: "doughy_buzzwing_megabox",
+
+  bag_egg_t1: "bagling_egg",
+  bag_egg_t2: "boxlet_egg",
+  bag_egg_t3: "megabox_egg",
 };
 
 const plantImages = {
@@ -156,7 +172,7 @@ async function updateAppHome(userId) {
                 type: "mrkdwn",
                 text: `*${manifest.plant_titles[plant.kind]}* \`${
                   plant.kind
-                }\`${
+                }\` lvl. ${plant.lvl} ${
                   plant.kind == "dirt" ? "\n\n_So much opportunity!_" : ""
                 } ${(plant.statuses || [])
                   .map((status) => `:${itemEmojis[status.kind]}:`)
@@ -181,8 +197,9 @@ async function updateAppHome(userId) {
                   }
                 : undefined,
             },
-            ...(manifest.plant_recipes[plant.kind] || []).flatMap(
-              (recipe, recipeIndex) => {
+            ...(manifest.plant_recipes[plant.kind] || [])
+              .filter((recipe) => plant.lvl >= recipe.lvl)
+              .flatMap((recipe, recipeIndex) => {
                 const canCraftItem = canCraft(stead.inv, recipe);
 
                 // Hide plant recipes if they're uncraftable
@@ -193,6 +210,18 @@ async function updateAppHome(userId) {
                 ) {
                   return [];
                 }
+
+                const formatMakeItem = (make_item) => {
+                  if (typeof make_item == "string")
+                    return (
+                      `:${itemEmojis[recipe.make_item]}: ` +
+                      manifest.items[recipe.make_item].name
+                    );
+                  else
+                    return make_item.one_of
+                      .map(([_chance, slug]) => `:${itemEmojis[slug]}:`)
+                      .join("/");
+                };
 
                 return [
                   {
@@ -208,8 +237,7 @@ async function updateAppHome(userId) {
                           .join(", ") +
                         " :arrow_right: *" +
                         (recipe.make_item
-                          ? `:${itemEmojis[recipe.make_item]}: ` +
-                            manifest.items[recipe.make_item].name
+                          ? formatMakeItem(recipe.make_item)
                           : ":seedling: " +
                             manifest.plant_titles[recipe.change_plant_to]) +
                         "*",
@@ -259,8 +287,7 @@ async function updateAppHome(userId) {
                     },
                   },
                 ];
-              }
-            ),
+              }),
             { type: "divider" },
           ];
         }),
