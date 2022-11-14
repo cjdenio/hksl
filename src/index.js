@@ -91,6 +91,45 @@ const prisma = new PrismaClient();
 const app = new App({
   token: process.env.SLACK_TOKEN,
   signingSecret: process.env.SLACK_SIGNING_SECRET,
+  customRoutes: [
+    {
+      method: "GET",
+      path: "/user",
+      async handler(req, res) {
+        const url = new URL(req.url, "https://misguided.enterprises/hksl");
+
+        const username = url.searchParams.get("username");
+        const slackId = url.searchParams.get("slack_id");
+
+        res.setHeader("Content-Type", "application/json");
+
+        if (!username && !slackId) {
+          return res.end(
+            JSON.stringify({
+              ok: false,
+              msg: "must provide ?username= or ?slack_id=",
+            })
+          );
+        }
+
+        const user = username
+          ? await prisma.user.findFirst({
+              where: { username },
+              select: { username: true, slackId: true },
+            })
+          : await prisma.user.findUnique({
+              where: { slackId },
+              select: { username: true, slackId: true },
+            });
+
+        if (!user) {
+          return res.end(JSON.stringify({ ok: false, msg: "user not found" }));
+        }
+
+        res.end(JSON.stringify({ ok: true, user: user }));
+      },
+    },
+  ],
 });
 
 setInterval(() => {
