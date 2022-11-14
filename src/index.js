@@ -489,15 +489,54 @@ app.action("send", async ({ ack, action, body, client }) => {
   });
 });
 
+// app.action("send_with_username", async ({ ack, view, client }) => {
+//   await ack();
+//   await client.views.update({
+//     view_id: view,
+//   });
+// });
+
 app.view("send", async ({ view, ack, body }) => {
   const user = await prisma.user.findUniqueOrThrow({
     where: { slackId: body.user.id },
   });
 
+  let recipientUsername;
+  let recipient;
+  let userField;
+
+  if (view.state.values.user) {
+    // send by slack user
+
+    recipient = await prisma.user.findUnique({
+      where: { slackId: view.state.values.user.user.selected_user },
+    });
+
+    if (!recipient) {
+      return ack({
+        response_action: "errors",
+        errors: {
+          user: "this user doesn't have a hkgi account",
+        },
+      });
+    }
+
+    recipientUsername = recipient.username;
+    userField = "user";
+  } else {
+    // send by username
+
+    recipientUsername = view.state.values.username.username.value;
+    recipient = await prisma.user.findFirst({
+      where: { username: recipientUsername },
+    });
+    recipientField = "username";
+  }
+
   const { data } = await axios.post(
     "https://misguided.enterprises/hkgi/gib",
     {
-      person: view.state.values.username.username.value,
+      person: recipientUsername,
       item: view.private_metadata,
       amount: parseInt(view.state.values.amount.amount.value),
     },
@@ -514,7 +553,7 @@ app.view("send", async ({ view, ack, body }) => {
       await ack({
         response_action: "errors",
         errors: {
-          username: "that user doesn't exist",
+          [userField]: "that user doesn't exist",
         },
       });
     } else if (data.msg == "you can't afford that!") {
@@ -528,26 +567,17 @@ app.view("send", async ({ view, ack, body }) => {
       await ack({
         response_action: "errors",
         errors: {
-          username: "something went wrong",
+          [userField]: "something went wrong",
         },
       });
     }
   } else {
     await ack();
 
-    await prisma.user.update({
-      where: { slackId: user.slackId },
-      data: { lastSentTo: view.state.values.username.username.value },
-    });
-
     await updateAppHome(body.user.id);
 
-    const receivingUser = await prisma.user.findFirst({
-      where: { username: view.state.values.username.username.value },
-    });
-
-    if (receivingUser) {
-      await updateAppHome(receivingUser.slackId);
+    if (recipient) {
+      await updateAppHome(recipient.slackId);
     }
   }
 });
@@ -587,19 +617,29 @@ function sendModal(item, user) {
         type: "input",
         label: {
           type: "plain_text",
-          text: "Username to send to",
+          text: "Slack user to send to",
         },
-        block_id: "username",
+        block_id: "user",
         element: {
-          type: "plain_text_input",
-          action_id: "username",
-          placeholder: {
-            type: "plain_text",
-            text: "e.g. cjdenio",
-          },
-          initial_value: user.lastSentTo ?? undefined,
+          type: "users_select",
+          action_id: "user",
         },
       },
+      // {
+      //   type: "section",
+      //   text: {
+      //     type: "mrkdwn",
+      //     text: "Need to send to someone outside Slack?",
+      //   },
+      //   accessory: {
+      //     type: "button",
+      //     action_id: "send_with_username",
+      //     text: {
+      //       type: "plain_text",
+      //       text: "Send with username",
+      //     },
+      //   },
+      // },
     ],
     submit: {
       type: "plain_text",
