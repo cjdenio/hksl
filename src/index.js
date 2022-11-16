@@ -7,6 +7,8 @@ import { PrismaClient } from "@prisma/client";
 
 const { App } = _bolt;
 
+const rootUrl = process.env.ROOT_URL || "https://misguided.enterprises/hkgi";
+
 const itemEmojis = {
   bbc_seed: "bractus_seed",
   bbc_essence: "bread_essence",
@@ -220,10 +222,9 @@ async function updateAppHome(userId) {
     });
   }
 
-  const { data: stead } = await axios(
-    "https://misguided.enterprises/hkgi/getstead",
-    { auth: { username: user.username, password: user.password } }
-  );
+  const { data: stead } = await axios(`${rootUrl}/getstead`, {
+    auth: { username: user.username, password: user.password },
+  });
 
   await app.client.views.publish({
     user_id: userId,
@@ -501,7 +502,7 @@ app.view("auth", async ({ ack, view, body }) => {
   const password = view.state.values.password.password.value;
 
   const { data } = await axios.post(
-    "https://misguided.enterprises/hkgi/testauth",
+    `${rootUrl}/testauth`,
     {},
     {
       auth: {
@@ -514,7 +515,7 @@ app.view("auth", async ({ ack, view, body }) => {
   if (!data.ok) {
     if (data.msg == "user doesn't exist") {
       // create user
-      await axios.post("https://misguided.enterprises/hkgi/signup", {
+      await axios.post(`${rootUrl}/signup`, {
         user: username,
         pass: password,
       });
@@ -609,7 +610,7 @@ app.view("send", async ({ view, ack, body }) => {
   }
 
   const { data } = await axios.post(
-    "https://misguided.enterprises/hkgi/gib",
+    `${rootUrl}/gib`,
     {
       person: recipientUsername,
       item: view.private_metadata,
@@ -736,8 +737,8 @@ app.action(/^item_options:.+/, async ({ ack, action, body, client }) => {
   const option = action.selected_option.value;
 
   if (option == "use") {
-    const { data } = await axios.post(
-      "https://misguided.enterprises/hkgi/useitem",
+    await axios.post(
+      `${rootUrl}/useitem`,
       {
         item,
       },
@@ -745,8 +746,6 @@ app.action(/^item_options:.+/, async ({ ack, action, body, client }) => {
         auth: { username: user.username, password: user.password },
       }
     );
-
-    console.log(data);
   } else if (option == "send") {
     await client.views.open({
       trigger_id: body.trigger_id,
@@ -771,7 +770,7 @@ app.action("craft", async ({ ack, action, body }) => {
   const value = JSON.parse(action.value);
 
   const { data } = await axios.post(
-    "https://misguided.enterprises/hkgi/craft",
+    `${rootUrl}/craft`,
     {
       plot_index: value.plotIndex,
       recipe_index: value.recipeIndex,
@@ -788,9 +787,7 @@ app.action("craft", async ({ ack, action, body }) => {
 });
 
 (async () => {
-  const { data: _manifest } = await axios(
-    "https://misguided.enterprises/hkgi/manifest"
-  );
+  const { data: _manifest } = await axios(`${rootUrl}/manifest`);
   manifest = _manifest;
 
   await app.start(3015);
