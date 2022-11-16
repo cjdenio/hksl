@@ -129,6 +129,42 @@ const app = new App({
         res.end(JSON.stringify({ ok: true, user: user }));
       },
     },
+    {
+      method: "POST",
+      path: "/webhook",
+      handler(req, res) {
+        let rawBody = "";
+        req.on("data", (chunk) => (rawBody += chunk));
+        req.on("end", async () => {
+          const body = JSON.parse(rawBody);
+
+          if (body.kind == "gib") {
+            // is the receiving user on Slack?
+
+            const user = await prisma.user.findFirst({
+              where: { username: body.to },
+            });
+
+            if (!user) return;
+
+            const sendingUser = await prisma.user.findFirst({
+              where: { username: body.from },
+            });
+
+            await app.client.chat.postMessage({
+              channel: user.slackId,
+              text: `You received ${body.amount} :${itemEmojis[body.item]}: *${
+                manifest.items[body.item].name
+              }* from ${
+                sendingUser ? `<@${sendingUser.slackId}>` : body.from
+              }!`,
+            });
+          }
+        });
+
+        res.end();
+      },
+    },
   ],
 });
 
