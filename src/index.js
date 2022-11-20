@@ -140,35 +140,77 @@ const app = new App({
         req.on("end", async () => {
           const body = JSON.parse(rawBody);
 
-          if (body.kind == "gib") {
-            // is the receiving user on Slack?
+					const handlers = {
+						gib: handleGib,
+						verificationRequest: handleVerificationRequest,
+					};
 
-            const user = await prisma.user.findFirst({
-              where: { username: body.to },
-            });
+					const handler = handlers[body.kind];
+					if (!handler) return;
 
-            if (!user) return;
-
-            const sendingUser = await prisma.user.findFirst({
-              where: { username: body.from },
-            });
-
-            await app.client.chat.postMessage({
-              channel: user.slackId,
-              text: `You received ${body.amount} :${itemEmojis[body.item]}: *${
-                manifest.items[body.item].name
-              }* from ${
-                sendingUser ? `<@${sendingUser.slackId}>` : body.from
-              }!`,
-            });
-          }
-        });
+					handler(req, res);
+				});
 
         res.end();
       },
     },
   ],
 });
+
+const handleGib = async (req, res) => {
+	// is the receiving user on Slack?
+	const user = await prisma.user.findFirst({
+		where: { username: body.to },
+	});
+	if (!user) return;
+
+	const sendingUser = await prisma.user.findFirst({
+		where: { username: body.from },
+	});
+
+	await app.client.chat.postMessage({
+		channel: user.slackId,
+		text: `You received ${body.amount} :${itemEmojis[body.item]}: *${
+			manifest.items[body.item].name
+		}* from ${sendingUser ? `<@${sendingUser.slackId}>` : body.from}!`,
+	});
+};
+
+const handleVerificationRequest = async (req, res) => {
+  const user = await prisma.user.findFirst({
+    where: { username: body.who },
+  });
+  if(!user) return;
+
+  await app.client.chat.postMessage({
+    channel: user.slackId,
+    text: 'Did you recently sign into a hkgi app? You received a request to verify your identity!',
+    blocks: [
+      {
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text: 'Did you recently sign into a hkgi app? You received a request to verify your identity!',
+        },
+      },
+      {
+        type: "actions",
+        elements: [
+          {
+            type: "button",
+            text: {
+              type: "plain_text",
+              text: "That was me!",
+            },
+            value: "yes",
+            style: "primary",
+            action_id: "hgki-idp-verify"
+          }
+        ]
+      }
+    ]
+  });
+};
 
 setInterval(() => {
   const activeUsers = Object.entries(userActivity)
@@ -784,6 +826,32 @@ app.action("craft", async ({ ack, action, body }) => {
   );
 
   await updateAppHome(body.user.id);
+});
+
+app.action("hkgi-idp-verify", async ({ ack, body, say}) => {
+  await ack();
+
+  const user = await prisma.user.findUniqueOrThrow({
+    where: { slackId: body.user.id },
+  });
+
+  userActivity[body.user.id] = Date.now();
+
+  const { data } = await axios.post(
+    `${rootUrl}/idp/verify`,
+    {
+      auth: {
+        username: user.username,
+        password: user.password,
+      },
+    }
+  );
+
+  if(!data.ok) {
+    return await say(`:x: ${data.msg}`);
+  }
+
+  await say(`:white_check_mark: Verified`);
 });
 
 (async () => {
