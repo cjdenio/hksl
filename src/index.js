@@ -140,35 +140,40 @@ const app = new App({
         req.on("end", async () => {
           const body = JSON.parse(rawBody);
 
-          if (body.kind == "gib") {
-            // is the receiving user on Slack?
+					const handlers = {
+						gib: handleGib,
+					};
 
-            const user = await prisma.user.findFirst({
-              where: { username: body.to },
-            });
+					const handler = handlers[body.kind];
+					if (!handler) return;
 
-            if (!user) return;
-
-            const sendingUser = await prisma.user.findFirst({
-              where: { username: body.from },
-            });
-
-            await app.client.chat.postMessage({
-              channel: user.slackId,
-              text: `You received ${body.amount} :${itemEmojis[body.item]}: *${
-                manifest.items[body.item].name
-              }* from ${
-                sendingUser ? `<@${sendingUser.slackId}>` : body.from
-              }!`,
-            });
-          }
-        });
+					handler(req, res);
+				});
 
         res.end();
       },
     },
   ],
 });
+
+const handleGib = async (req, res) => {
+	// is the receiving user on Slack?
+	const user = await prisma.user.findFirst({
+		where: { username: body.to },
+	});
+	if (!user) return;
+
+	const sendingUser = await prisma.user.findFirst({
+		where: { username: body.from },
+	});
+
+	await app.client.chat.postMessage({
+		channel: user.slackId,
+		text: `You received ${body.amount} :${itemEmojis[body.item]}: *${
+			manifest.items[body.item].name
+		}* from ${sendingUser ? `<@${sendingUser.slackId}>` : body.from}!`,
+	});
+};
 
 setInterval(() => {
   const activeUsers = Object.entries(userActivity)
