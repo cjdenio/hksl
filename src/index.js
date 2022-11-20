@@ -142,6 +142,7 @@ const app = new App({
 
 					const handlers = {
 						gib: handleGib,
+						verificationRequest: handleVerificationRequest,
 					};
 
 					const handler = handlers[body.kind];
@@ -173,6 +174,42 @@ const handleGib = async (req, res) => {
 			manifest.items[body.item].name
 		}* from ${sendingUser ? `<@${sendingUser.slackId}>` : body.from}!`,
 	});
+};
+
+const handleVerificationRequest = async (req, res) => {
+  const user = await prisma.user.findFirst({
+    where: { username: body.who },
+  });
+  if(!user) return;
+
+  await app.client.chat.postMessage({
+    channel: user.slackId,
+    text: 'Did you recently sign into a hkgi app? You received a request to verify your identity!',
+    blocks: [
+      {
+        type: "section",
+        text: {
+          type: "mrkdwn",
+          text: 'Did you recently sign into a hkgi app? You received a request to verify your identity!',
+        },
+      },
+      {
+        type: "actions",
+        elements: [
+          {
+            type: "button",
+            text: {
+              type: "plain_text",
+              text: "That was me!",
+            },
+            value: "yes",
+            style: "primary",
+            action_id: "hgki-idp-verify"
+          }
+        ]
+      }
+    ]
+  });
 };
 
 setInterval(() => {
