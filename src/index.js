@@ -828,6 +828,32 @@ app.action("craft", async ({ ack, action, body }) => {
   await updateAppHome(body.user.id);
 });
 
+app.action("hkgi-idp-verify", async ({ ack, body, say}) => {
+  await ack();
+
+  const user = await prisma.user.findUniqueOrThrow({
+    where: { slackId: body.user.id },
+  });
+
+  userActivity[body.user.id] = Date.now();
+
+  const { data } = await axios.post(
+    `${rootUrl}/idp/verify`,
+    {
+      auth: {
+        username: user.username,
+        password: user.password,
+      },
+    }
+  );
+
+  if(!data.ok) {
+    return await say(`:x: ${data.msg}`);
+  }
+
+  await say(`:white_check_mark: Verified`);
+});
+
 (async () => {
   const { data: _manifest } = await axios(`${rootUrl}/manifest`);
   manifest = _manifest;
